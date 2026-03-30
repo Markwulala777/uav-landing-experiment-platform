@@ -2,8 +2,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-INSTALL_ROOT="${1:-${INSTALL_ROOT:-$HOME/uav-usv-experiment-platform-runtime}}"
+SCRIPT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEFAULT_INSTALL_ROOT="$HOME/uav-usv-experiment-platform-runtime"
+
+if [[ -d "$SCRIPT_ROOT/catkin_ws" || -d "$SCRIPT_ROOT/PX4_Firmware" ]]; then
+  DEFAULT_INSTALL_ROOT="$SCRIPT_ROOT"
+fi
+
+INSTALL_ROOT="${1:-${INSTALL_ROOT:-$DEFAULT_INSTALL_ROOT}}"
 
 CATKIN_WS="${CATKIN_WS:-$INSTALL_ROOT/catkin_ws}"
 PX4_DIR="${PX4_DIR:-$INSTALL_ROOT/PX4_Firmware}"
@@ -24,19 +30,19 @@ fi
 
 if [[ ! -f "$CATKIN_WS/devel/setup.bash" ]]; then
   echo "Missing catkin workspace setup file: $CATKIN_WS/devel/setup.bash" >&2
-  echo "Run $REPO_ROOT/scripts/bootstrap.sh first." >&2
+  echo "Build or restore the runtime before launching the simulator." >&2
   exit 1
 fi
 
 if [[ ! -f "$WORLD_FILE" ]]; then
   echo "Missing generated world file: $WORLD_FILE" >&2
-  echo "Run $REPO_ROOT/scripts/bootstrap.sh first, or rebuild the catkin workspace." >&2
+  echo "Rebuild the catkin workspace inside the runtime before launching the simulator." >&2
   exit 1
 fi
 
 if [[ ! -d "$PX4_DIR/build/px4_sitl_default" ]]; then
   echo "Missing PX4 SITL build directory: $PX4_DIR/build/px4_sitl_default" >&2
-  echo "Run $REPO_ROOT/scripts/bootstrap.sh first." >&2
+  echo "Build the PX4 runtime before launching the simulator." >&2
   exit 1
 fi
 

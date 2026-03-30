@@ -19,6 +19,8 @@ class UsvDroneMission:
         self.drone_pose = None
         self.local_pose = None
         self.commanded_z = None # 保存上一次期望的高以平滑下降
+        self.takeoff_state_start = None
+        self.takeoff_fallback_requested = False
         
         # MAVROS 客户端
         self.local_pos_pub = rospy.Publisher('/iris_0/mavros/setpoint_position/local', PoseStamped, queue_size=10)
@@ -40,6 +42,7 @@ class UsvDroneMission:
 
         # 参数
         self.takeoff_height = 5
+        self.takeoff_fallback_timeout = 8.0
         self.usv_thrust = 50.0
         self.catch_distance = 1.0
         self.offset_x = 0.0
@@ -131,6 +134,8 @@ class UsvDroneMission:
                 
                 if elapsed > 5.0:
                     mission_state = 1
+                    self.takeoff_state_start = current_time
+                    self.takeoff_fallback_requested = False
                     rospy.loginfo("5s Elapsed. Switching to Takeoff.")
                     last_req = current_time - rospy.Duration(10) 
 
@@ -138,6 +143,14 @@ class UsvDroneMission:
             elif mission_state == 1:
                 self.publish_usv_cmd(self.usv_thrust)
                 self.publish_pose_setpoint(self.takeoff_x, self.takeoff_y, self.takeoff_height)
+                rospy.loginfo_throttle(
+                    1.0,
+                    "Takeoff phase... mode={}, armed={}, local_z={:.2f}".format(
+                        self.state.mode,
+                        self.state.armed,
+                        self.local_pose.pose.position.z,
+                    ),
+                )
                 
                 if self.state.mode != "OFFBOARD" and (current_time - last_req) > rospy.Duration(2.0):
                     rospy.loginfo("Requesting OFFBOARD...")
@@ -158,8 +171,26 @@ class UsvDroneMission:
                     except rospy.ServiceException as e:
                         rospy.logwarn(e)
                     last_req = current_time
+
+                if (
+                    self.state.armed
+                    and not self.takeoff_fallback_requested
+                    and self.takeoff_state_start is not None
+                    and (current_time - self.takeoff_state_start).to_sec() > self.takeoff_fallback_timeout
+                    and self.local_pose.pose.position.z < 0.5
+                    and (current_time - last_req) > rospy.Duration(2.0)
+                ):
+                    rospy.logwarn("Takeoff altitude did not increase. Requesting AUTO.TAKEOFF fallback...")
+                    try:
+                        resp = self.set_mode_client(custom_mode="AUTO.TAKEOFF")
+                        if resp.mode_sent:
+                            rospy.loginfo("AUTO.TAKEOFF requested")
+                    except rospy.ServiceException as e:
+                        rospy.logwarn(e)
+                    self.takeoff_fallback_requested = True
+                    last_req = current_time
                 
-                if self.state.mode == "OFFBOARD" and self.state.armed:
+                if self.state.armed:
                      if self.local_pose.pose.position.z > (self.takeoff_height - 0.3):
                         mission_state = 2
                         rospy.loginfo("Takeoff Done. Chasing.")
@@ -167,6 +198,16 @@ class UsvDroneMission:
             # 状态 2: 飞机追船
             elif mission_state == 2:
                 self.publish_usv_cmd(self.usv_thrust)
+
+                if self.state.mode != "OFFBOARD" and (current_time - last_req) > rospy.Duration(2.0):
+                    rospy.loginfo("Re-requesting OFFBOARD for chase.")
+                    try:
+                        resp = self.set_mode_client(custom_mode="OFFBOARD")
+                        if resp.mode_sent:
+                            rospy.loginfo("OFFBOARD enabled for chase")
+                    except rospy.ServiceException as e:
+                        rospy.logwarn(e)
+                    last_req = current_time
                 
                 # 计算相对位置: Target_Local = Target_Global - Home_Global + Home_Local
                 # 增加前向偏移 (前进方向)

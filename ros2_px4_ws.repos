@@ -1,0 +1,7 @@
+repositories:
+  px4_msgs:
+    type: git
+    url: https://github.com/PX4/px4_msgs.git
+  px4_ros_com:
+    type: git
+    url: https://github.com/PX4/px4_ros_com.git

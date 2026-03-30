@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>relative_estimation</name>
+  <version>0.0.1</version>
+  <description>Truth-level relative-state estimation for the mixed UAV-USV research stack.</description>
+
+  <maintainer email="jia@example.com">jia</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>rclpy</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

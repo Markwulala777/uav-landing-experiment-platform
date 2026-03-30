@@ -25,6 +25,20 @@ need_cmd() {
   fi
 }
 
+install_runtime_scripts() {
+  mkdir -p "$INSTALL_ROOT/scripts"
+  rsync -a \
+    "$REPO_ROOT/scripts/run_sim.sh" \
+    "$REPO_ROOT/scripts/run_mission.sh" \
+    "$REPO_ROOT/scripts/run_ros1_world.sh" \
+    "$REPO_ROOT/scripts/run_ros1_deck_interface.sh" \
+    "$REPO_ROOT/scripts/run_microxrce_agent.sh" \
+    "$REPO_ROOT/scripts/run_ros1_bridge.sh" \
+    "$REPO_ROOT/scripts/run_ros2_research.sh" \
+    "$INSTALL_ROOT/scripts/"
+  chmod +x "$INSTALL_ROOT/scripts/"*.sh
+}
+
 clone_or_checkout() {
   local repo_url="$1"
   local target_dir="$2"
@@ -70,6 +84,9 @@ rsync -a --delete "$REPO_ROOT/catkin_ws_src/" "$CATKIN_WS/src/"
 
 echo "[bootstrap] Applying experiment overlays"
 "$SCRIPT_DIR/apply_overlay.sh" "$INSTALL_ROOT"
+
+echo "[bootstrap] Installing runtime launcher scripts"
+install_runtime_scripts
 
 source /opt/ros/noetic/setup.bash
 
@@ -117,5 +134,5 @@ echo "[bootstrap] Building catkin workspace"
 echo
 echo "[bootstrap] Done."
 echo "[bootstrap] Runtime root: $INSTALL_ROOT"
-echo "[bootstrap] Start simulator with: $REPO_ROOT/scripts/run_sim.sh \"$INSTALL_ROOT\""
-echo "[bootstrap] Start mission with:   $REPO_ROOT/scripts/run_mission.sh \"$INSTALL_ROOT\""
+echo "[bootstrap] Start simulator with: $INSTALL_ROOT/scripts/run_sim.sh"
+echo "[bootstrap] Start mission with:   $INSTALL_ROOT/scripts/run_mission.sh"
