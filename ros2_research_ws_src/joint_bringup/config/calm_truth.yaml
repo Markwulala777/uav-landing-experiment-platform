@@ -1,0 +1,25 @@
+/**:
+  ros__parameters:
+    use_sim_time: true
+
+experiment_manager:
+  ros__parameters:
+    scenario_id: calm_truth
+    seed: 42
+    sea_state: calm
+    controller_variant: truth_guidance_px4
+    delay_profile: none
+
+landing_guidance:
+  ros__parameters:
+    approach_height: 5.0
+    terminal_height: 0.3
+    descent_rate: 0.4
+
+safety_manager:
+  ros__parameters:
+    abort_xy_error: 4.0
+    abort_abs_z: 8.0
+    abort_lateral_speed: 3.0
+    descent_xy_gate: 0.75
+    descent_lateral_speed_gate: 0.8

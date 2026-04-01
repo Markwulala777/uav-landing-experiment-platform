@@ -20,6 +20,15 @@ source_setup() {
   set -u
 }
 
+source_best_setup() {
+  local prefix="$1"
+  if [[ -f "$prefix/local_setup.bash" ]]; then
+    source_setup "$prefix/local_setup.bash"
+  elif [[ -f "$prefix/setup.bash" ]]; then
+    source_setup "$prefix/setup.bash"
+  fi
+}
+
 reset_ros_env() {
   unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PKG_CONFIG_PATH PYTHONPATH
   unset ROS_DISTRO ROS_ETC_DIR ROS_MASTER_URI ROS_PACKAGE_PATH ROS_ROOT ROS_VERSION ROS_PYTHON_VERSION
@@ -40,10 +49,7 @@ fi
 reset_ros_env
 source_setup /opt/ros/foxy/setup.bash
 
-if [[ -f "$ROS2_PX4_WS/install/setup.bash" ]]; then
-  source_setup "$ROS2_PX4_WS/install/setup.bash"
-fi
-
-source_setup "$ROS2_RESEARCH_WS/install/setup.bash"
+source_best_setup "$ROS2_PX4_WS/install"
+source_best_setup "$ROS2_RESEARCH_WS/install"
 
 exec ros2 launch joint_bringup stage1_joint.launch.py

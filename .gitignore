@@ -23,6 +23,10 @@ logs/
 runtime/
 workspace/
 
+# Experiment outputs
+uav-usv-experiment-runs/
+runs/
+
 # Patch / merge leftovers
 *.orig
 *.rej

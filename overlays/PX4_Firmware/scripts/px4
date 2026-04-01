@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PX4_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PX4_BIN="${PX4_DIR}/build/px4_sitl_default/bin/px4"
+
+if [[ ! -x "$PX4_BIN" ]]; then
+  echo "Missing PX4 SITL binary: $PX4_BIN" >&2
+  exit 1
+fi
+
+exec "$PX4_BIN" "$@"

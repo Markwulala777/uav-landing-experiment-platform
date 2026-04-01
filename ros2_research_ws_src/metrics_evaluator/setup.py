@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = "landing_guidance"
+package_name = "metrics_evaluator"
 
 setup(
     name=package_name,
@@ -14,12 +14,11 @@ setup(
     zip_safe=True,
     maintainer="jia",
     maintainer_email="jia@example.com",
-    description="Baseline truth-level landing guidance.",
+    description="Phase 1 metrics evaluator.",
     license="MIT",
     entry_points={
         "console_scripts": [
-            "truth_guidance = landing_guidance.truth_guidance_node:main",
-            "px4_offboard_bridge = landing_guidance.px4_offboard_bridge:main",
+            "summary_writer = metrics_evaluator.summary_writer:main",
         ],
     },
 )

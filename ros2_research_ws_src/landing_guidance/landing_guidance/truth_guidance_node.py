@@ -15,7 +15,8 @@ class TruthGuidanceNode(Node):
         self.declare_parameter("terminal_height", 0.3)
         self.declare_parameter("descent_rate", 0.4)
 
-        self.setpoint_pub = self.create_publisher(PoseStamped, "/landing_guidance/debug/pose_setpoint", 10)
+        self.setpoint_pub = self.create_publisher(PoseStamped, "/landing_guidance/setpoint/world", 10)
+        self.debug_setpoint_pub = self.create_publisher(PoseStamped, "/landing_guidance/debug/pose_setpoint", 10)
         self.phase_pub = self.create_publisher(String, "/landing_guidance/status/phase", 10)
 
         self.create_subscription(PoseStamped, "/deck_interface/truth/landing_target_pose", self.target_pose_cb, 10)
@@ -64,6 +65,7 @@ class TruthGuidanceNode(Node):
         msg.pose.position.z = self.commanded_z
 
         self.setpoint_pub.publish(msg)
+        self.debug_setpoint_pub.publish(msg)
         self.phase_pub.publish(String(data=phase))
 
 

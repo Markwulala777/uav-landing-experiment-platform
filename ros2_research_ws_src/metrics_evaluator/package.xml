@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="3">
-  <name>landing_guidance</name>
+  <name>metrics_evaluator</name>
   <version>0.0.1</version>
-  <description>Baseline truth-level landing guidance node for the mixed UAV-USV stack.</description>
+  <description>Phase 1 summary-metric extraction for moving-deck landing experiments.</description>
 
   <maintainer email="jia@example.com">jia</maintainer>
   <license>MIT</license>
@@ -10,7 +10,6 @@
   <buildtool_depend>ament_python</buildtool_depend>
 
   <depend>geometry_msgs</depend>
-  <depend>px4_msgs</depend>
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
 

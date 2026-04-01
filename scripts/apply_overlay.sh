@@ -23,6 +23,33 @@ if ! command -v rsync >/dev/null 2>&1; then
   exit 1
 fi
 
+legacy_px4_paths=(
+  "Tools/flightgear_bridge"
+  "Tools/jMAVSim"
+  "Tools/jsbsim_bridge"
+  "Tools/simulation-ignition"
+  "Tools/sitl_gazebo"
+  "boards/px4/sitl/default.px4board"
+  "ROMFS/px4fmu_common/init.d-posix/airframes/10016_iris.post"
+  "ROMFS/px4fmu_common/init.d-posix/airframes/CMakeLists.txt"
+  "ROMFS/px4fmu_common/init.d-posix/px4-rc.rtps"
+  "src/drivers/uavcan_v1"
+  "src/modules/microdds_client"
+  "src/modules/micrortps_bridge"
+  "src/modules/microdds_client/CMakeLists.txt"
+  "src/modules/microdds_client/microdds_client.h"
+  "src/modules/micrortps_bridge/micrortps_client/dds_topics.h"
+  "src/modules/micrortps_bridge/micrortps_client/utilities.hpp"
+)
+
+for rel_path in "${legacy_px4_paths[@]}"; do
+  if git -C "$PX4_DIR" ls-files --error-unmatch "$rel_path" >/dev/null 2>&1; then
+    continue
+  fi
+
+  rm -rf "$PX4_DIR/$rel_path"
+done
+
 echo "[apply_overlay] Syncing PX4 overlay into $PX4_DIR"
 rsync -a "$REPO_ROOT/overlays/PX4_Firmware/" "$PX4_DIR/"
 

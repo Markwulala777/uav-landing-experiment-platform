@@ -23,6 +23,33 @@ need_cmd() {
   fi
 }
 
+filter_colon_var() {
+  local var_name="$1"
+  local current="${!var_name:-}"
+  local filtered=()
+
+  IFS=':' read -r -a parts <<< "$current"
+  for part in "${parts[@]}"; do
+    [[ -z "$part" ]] && continue
+
+    case "$part" in
+      */PX4_Firmware/build/*/build_gazebo*|*/PX4_Firmware/Tools/sitl_gazebo*|*/PX4_Firmware/Tools/simulation/gazebo-classic/*)
+        continue
+        ;;
+    esac
+
+    filtered+=("$part")
+  done
+
+  if [[ ${#filtered[@]} -gt 0 ]]; then
+    printf -v "$var_name" '%s' "$(IFS=:; echo "${filtered[*]}")"
+  else
+    printf -v "$var_name" '%s' ""
+  fi
+
+  export "$var_name"
+}
+
 if [[ ! -f /opt/ros/noetic/setup.bash ]]; then
   echo "ROS Noetic was not found at /opt/ros/noetic/setup.bash" >&2
   exit 1
@@ -50,8 +77,34 @@ need_cmd xmlstarlet
 
 source /opt/ros/noetic/setup.bash
 source "$CATKIN_WS/devel/setup.bash"
-export ROS_PACKAGE_PATH="${ROS_PACKAGE_PATH:-}:$PX4_DIR"
-source "$PX4_DIR/Tools/setup_gazebo.bash" "$PX4_DIR" "$PX4_DIR/build/px4_sitl_default"
+
+unset PX4_SIM_MODEL PX4_SIMULATOR PX4_SYS_AUTOSTART PX4_SIM_HOSTNAME PX4_SIM_HOST_ADDR
+unset PX4_GZ_MODEL PX4_GZ_MODEL_NAME PX4_GZ_MODEL_POSE PX4_GZ_WORLD PX4_GZ_WORLDS
+unset PX4_UXRCE_DDS_NS PX4_UXRCE_DDS_PORT
+
+filter_colon_var LD_LIBRARY_PATH
+filter_colon_var GAZEBO_PLUGIN_PATH
+filter_colon_var GAZEBO_MODEL_PATH
+filter_colon_var GAZEBO_RESOURCE_PATH
+
+if [[ -n "${ROS_PACKAGE_PATH:-}" ]]; then
+  export ROS_PACKAGE_PATH="$PX4_DIR:$ROS_PACKAGE_PATH"
+else
+  export ROS_PACKAGE_PATH="$PX4_DIR"
+fi
+
+export GAZEBO_PLUGIN_PATH=""
+export GAZEBO_MODEL_PATH=""
+export GAZEBO_RESOURCE_PATH=""
+
+if [[ -f "$PX4_DIR/Tools/simulation/gazebo-classic/setup_gazebo.bash" ]]; then
+  source "$PX4_DIR/Tools/simulation/gazebo-classic/setup_gazebo.bash" "$PX4_DIR" "$PX4_DIR/build/px4_sitl_default"
+elif [[ -f "$PX4_DIR/Tools/setup_gazebo.bash" ]]; then
+  source "$PX4_DIR/Tools/setup_gazebo.bash" "$PX4_DIR" "$PX4_DIR/build/px4_sitl_default"
+else
+  echo "Missing PX4 Gazebo setup script under $PX4_DIR/Tools" >&2
+  exit 1
+fi
 
 if ! rospack find mavros >/dev/null 2>&1; then
   echo "ROS package 'mavros' was not found. Install ros-noetic-mavros and ros-noetic-mavros-extras." >&2

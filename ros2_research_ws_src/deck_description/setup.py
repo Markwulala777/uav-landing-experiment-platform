@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = "landing_guidance"
+package_name = "deck_description"
 
 setup(
     name=package_name,
@@ -14,12 +14,11 @@ setup(
     zip_safe=True,
     maintainer="jia",
     maintainer_email="jia@example.com",
-    description="Baseline truth-level landing guidance.",
+    description="Deck geometry metadata for Phase 1.",
     license="MIT",
     entry_points={
         "console_scripts": [
-            "truth_guidance = landing_guidance.truth_guidance_node:main",
-            "px4_offboard_bridge = landing_guidance.px4_offboard_bridge:main",
+            "deck_geometry = deck_description.deck_geometry_node:main",
         ],
     },
 )

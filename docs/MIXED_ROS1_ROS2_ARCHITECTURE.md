@@ -39,14 +39,31 @@ These topics are intentionally standard-message-only so they can cross `ros1_bri
 
 The ROS 2 research workspace is organized under `ros2_research_ws_src/` and currently starts the first research modules:
 
+- `deck_description`
 - `deck_interface`
+- `experiment_manager`
+- `frame_audit`
 - `relative_estimation`
 - `landing_guidance`
 - `safety_manager`
 - `touchdown_manager`
+- `metrics_evaluator`
 - `joint_bringup`
 
-`experiment_manager` and `metrics_evaluator` are still planned next and should be added before comparative experiments are treated as thesis-grade evidence.
+Phase 1 now includes:
+
+- truth-level deck geometry publication
+- ROS2-to-PX4 offboard bridge output
+- frame-audit reporting
+- per-run metadata generation
+- summary metric extraction
+
+The major remaining gap before thesis-grade comparative studies is not package presence, but richer experiment coverage:
+
+- delay and noise injection
+- perception-only relative estimation
+- stronger touchdown/contact realism
+- batch comparison protocols across controller variants
 
 ## Bring-up order
 
@@ -61,6 +78,13 @@ The ROS 2 research workspace is organized under `ros2_research_ws_src/` and curr
    - `./scripts/run_ros1_bridge.sh`
 5. Start ROS 2 research nodes:
    - `./scripts/run_ros2_research.sh`
+
+The default Stage 1 ROS 2 launch now:
+
+- forces `use_sim_time=true`
+- loads a calm-truth scenario config by default
+- starts experiment metadata generation and summary logging
+- publishes world-frame landing setpoints and forwards them to PX4 offboard topics
 
 ## Machine-level gaps still expected
 

@@ -10,11 +10,11 @@ PX4_DIR="${PX4_DIR:-$INSTALL_ROOT/PX4_Firmware}"
 XTDRONE_DIR="${XTDRONE_DIR:-$INSTALL_ROOT/XTDrone}"
 
 PX4_REPO_URL="${PX4_REPO_URL:-https://github.com/PX4/PX4-Autopilot.git}"
-PX4_REF="${PX4_REF:-46a12a09bf11c8cbafc5ad905996645b4fe1a9df}"
+PX4_REF="${PX4_REF:-v1.14.0}"
 XTDRONE_REPO_URL="${XTDRONE_REPO_URL:-https://gitee.com/robin_shaun/XTDrone.git}"
 XTDRONE_REF="${XTDRONE_REF:-62339a816ef815113a0366a62e8aca4be3000f80}"
 PX4_BUILD_TARGET="${PX4_BUILD_TARGET:-px4_sitl_default}"
-PX4_SIM_TARGET="${PX4_SIM_TARGET:-gazebo}"
+PX4_SIM_TARGET="${PX4_SIM_TARGET:-sitl_gazebo-classic}"
 SKIP_ROSDEP="${SKIP_ROSDEP:-0}"
 SKIP_PX4_PIP="${SKIP_PX4_PIP:-0}"
 
@@ -23,6 +23,12 @@ need_cmd() {
     echo "Missing required command: $1" >&2
     exit 1
   fi
+}
+
+reset_ros_env() {
+  unset AMENT_PREFIX_PATH COLCON_PREFIX_PATH CMAKE_PREFIX_PATH LD_LIBRARY_PATH PKG_CONFIG_PATH PYTHONPATH
+  unset ROS_DISTRO ROS_ETC_DIR ROS_MASTER_URI ROS_PACKAGE_PATH ROS_ROOT ROS_VERSION ROS_PYTHON_VERSION
+  unset ROS_LOCALHOST_ONLY ROSLISP_PACKAGE_DIRECTORIES ROS_DOMAIN_ID RMW_IMPLEMENTATION
 }
 
 install_runtime_scripts() {
@@ -47,6 +53,14 @@ clone_or_checkout() {
 
   if [[ -d "$target_dir/.git" ]]; then
     echo "[bootstrap] Reusing existing $label at $target_dir"
+    if [[ -n "$(git -C "$target_dir" status --short)" ]]; then
+      echo "[bootstrap] Cleaning existing $label worktree before checkout"
+      git -C "$target_dir" submodule foreach --recursive 'git reset --hard HEAD || true' || true
+      git -C "$target_dir" submodule foreach --recursive 'git clean -ffdx || true' || true
+      git -C "$target_dir" submodule deinit -f --all || true
+      git -C "$target_dir" reset --hard HEAD
+      git -C "$target_dir" clean -ffdx
+    fi
     git -C "$target_dir" fetch --all --tags
   elif [[ -e "$target_dir" ]]; then
     echo "[bootstrap] Refusing to use $target_dir because it exists and is not a git repository" >&2
@@ -58,7 +72,8 @@ clone_or_checkout() {
 
   echo "[bootstrap] Checking out $label ref $repo_ref"
   git -C "$target_dir" checkout "$repo_ref"
-  git -C "$target_dir" submodule update --init --recursive
+  git -C "$target_dir" submodule sync --recursive
+  git -C "$target_dir" submodule update --init --recursive --force
 }
 
 if [[ ! -f /opt/ros/noetic/setup.bash ]]; then
@@ -120,6 +135,7 @@ fi
 
 echo "[bootstrap] Building PX4 SITL"
 (
+  reset_ros_env
   cd "$PX4_DIR"
   DONT_RUN=1 make "$PX4_BUILD_TARGET" "$PX4_SIM_TARGET"
 )

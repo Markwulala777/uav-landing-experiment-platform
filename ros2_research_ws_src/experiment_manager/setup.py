@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = "landing_guidance"
+package_name = "experiment_manager"
 
 setup(
     name=package_name,
@@ -14,12 +14,11 @@ setup(
     zip_safe=True,
     maintainer="jia",
     maintainer_email="jia@example.com",
-    description="Baseline truth-level landing guidance.",
+    description="Scenario and output management for Phase 1.",
     license="MIT",
     entry_points={
         "console_scripts": [
-            "truth_guidance = landing_guidance.truth_guidance_node:main",
-            "px4_offboard_bridge = landing_guidance.px4_offboard_bridge:main",
+            "scenario_runner = experiment_manager.scenario_runner:main",
         ],
     },
 )
