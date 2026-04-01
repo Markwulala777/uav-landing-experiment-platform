@@ -7,6 +7,7 @@ Phase 1 is intended to validate the shared-world truth-level landing baseline, n
 - One shared Gazebo world only
 - ROS2 research nodes run with `use_sim_time=true`
 - Truth deck and relative-state interfaces are available
+- The frame convention is frozen and the ENU-to-NED conversion happens exactly once in `landing_guidance/px4_offboard_bridge`
 - Frame audit passes with configured tolerances
 - ROS2 guidance owns the UAV outer loop through PX4 offboard topics
 - Pre-touchdown corridor hold is measurable

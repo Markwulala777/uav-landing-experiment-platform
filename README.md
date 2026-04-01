@@ -92,6 +92,26 @@ New source and bootstrap entry points:
 
 See `docs/MIXED_ROS1_ROS2_ARCHITECTURE.md` for the new layer split and bring-up order.
 
+## Frozen coordinate convention
+
+Phase 1 freezes the coordinate responsibilities so the same state is not converted twice.
+
+- Gazebo truth and research-layer truth stay in `world` ENU.
+- `deck_interface_ros1` extracts truth from `/gazebo/model_states` and publishes deck, landing-target, UAV, and relative states without converting them into PX4 coordinates.
+- `landing_guidance` publishes `/landing_guidance/setpoint/world` in `world` ENU only.
+- `landing_guidance/px4_offboard_bridge` is the only node allowed to touch PX4 control coordinates.
+- The bridge resolves the PX4 local origin in `world` ENU from `/deck_interface/truth/uav_pose` and `/fmu/out/vehicle_local_position`.
+- The bridge then performs exactly one conversion chain: `world ENU -> local ENU -> local NED`.
+- No other node in this repository should publish PX4 setpoints in NED or re-apply ENU-to-NED conversion.
+
+Operational consequences:
+
+- If PX4 local position resets, the bridge re-resolves the local origin instead of changing the research-layer frame convention.
+- During local-origin re-resolution, the bridge keeps publishing the OFFBOARD heartbeat and holds the last valid local NED setpoint instead of going silent.
+- This keeps the research-layer contract stable while reducing OFFBOARD dropouts caused by transient PX4 local-position resets.
+
+See `docs/FRAME_CONVENTION.md` for the detailed frame definitions and audit rules.
+
 For ROS 2 workspaces, prefer an ASCII-only path such as `~/uav-usv-experiment-platform-runtime` and avoid non-ASCII paths like `~/下载/...`, because `px4_msgs` interface generation was observed to fail under a non-ASCII workspace path on this machine.
 
 The mixed bootstrap defaults to the local source combination that was validated on this machine:
@@ -227,15 +247,5 @@ You can also override these environment variables when needed:
 - The mission controller is the XTDrone overlay script `control/usv_drone_mission.py`.
 - The default XTDrone upstream is a Gitee URL. If your target machine cannot access Gitee, override `XTDRONE_REPO_URL` when running `scripts/bootstrap.sh`.
 - The mixed bootstrap builds `ros1_bridge` from source inside the runtime, so it does not require the binary `ros-foxy-ros1-bridge` package to be installable on the host machine.
+- The frozen coordinate rule for the mixed stack is: research nodes stay in `world` ENU, and only `landing_guidance/px4_offboard_bridge` converts setpoints into PX4 local NED.
 - This repository is intended for `Ubuntu 20.04 + Gazebo Classic 11 + ROS 1 Noetic + ROS 2 Foxy`, with the VRX main world on ROS 1 and the research layer on ROS 2. It should not be treated as a drop-in deployment package for Ubuntu 22.04 or newer without adaptation.
-
-## Publishing this repository to GitHub
-
-If you are creating the GitHub repository from this machine:
-
-```bash
-git remote add origin <your-github-url>
-git add .
-git commit -m "Initial uav-usv-experiment-platform snapshot"
-git push -u origin main
-```

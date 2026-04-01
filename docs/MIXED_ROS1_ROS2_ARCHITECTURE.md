@@ -50,6 +50,20 @@ The ROS 2 research workspace is organized under `ros2_research_ws_src/` and curr
 - `metrics_evaluator`
 - `joint_bringup`
 
+## Frozen coordinate ownership
+
+Phase 1 uses a strict frame boundary between the research layer and PX4:
+
+- ROS 1 truth extraction stays in Gazebo `world` ENU.
+- ROS 2 research nodes consume truth and publish guidance in `world` ENU.
+- `landing_guidance/px4_offboard_bridge` is the only place where guidance crosses into PX4 local coordinates.
+- The bridge performs one conversion chain only:
+  - `world ENU -> local ENU -> local NED`
+- The bridge resolves the PX4 local origin from truth UAV pose plus PX4 local-position feedback.
+- If PX4 local position resets, the bridge keeps the OFFBOARD heartbeat alive and holds the last valid local NED setpoint until the local origin is resolved again.
+
+This keeps the research-layer API independent of PX4 coordinate conventions and prevents duplicate ENU-to-NED conversions in upstream nodes.
+
 Phase 1 now includes:
 
 - truth-level deck geometry publication

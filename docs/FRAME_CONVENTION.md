@@ -7,6 +7,7 @@ This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-U
 - Use one shared Gazebo world frame for truth-level logging and replay.
 - Make ENU-to-NED conversion explicit and perform it exactly once.
 - Keep deck-relative states reproducible across ROS1, ROS2, and PX4.
+- Freeze which layer owns `world` ENU and which layer owns PX4 local NED.
 
 ## Canonical frames
 
@@ -39,6 +40,10 @@ This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-U
   - Relays ROS1 bridge truth topics into the Phase 1 research namespace.
 - ROS2 `relative_estimation`
   - Recomputes truth relative states independently for auditability.
+- ROS2 `landing_guidance`
+  - Publishes guidance setpoints in `world` ENU only.
+- ROS2 `landing_guidance.px4_offboard_bridge`
+  - Is the only node allowed to convert guidance setpoints into PX4 local NED.
 
 ## Relative-state convention
 
@@ -47,14 +52,20 @@ This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-U
 - Truth-level relative position and velocity are expressed in `landing_target_frame`.
 - Touchdown classification uses deck-relative states, not world-frame proximity alone.
 
-## ENU to NED conversion
+## Frozen control-coordinate boundary
 
-The only allowed ENU-to-NED conversion point in Phase 1 is:
+The only allowed conversion point between research-layer coordinates and PX4 flight-control coordinates in Phase 1 is:
 
 - ROS2 `landing_guidance.px4_offboard_bridge`
 
 Conversion rules:
 
+- First resolve the PX4 local origin in `world` ENU from:
+  - `/deck_interface/truth/uav_pose`
+  - `/fmu/out/vehicle_local_position`
+- Then convert:
+  - `world ENU -> local ENU`
+  - `local ENU -> local NED`
 - Position:
   - `x_ned = y_enu`
   - `y_ned = x_enu`
@@ -62,7 +73,13 @@ Conversion rules:
 - Yaw:
   - `yaw_ned = pi/2 - yaw_enu`
 
-No other node may silently convert the same state again.
+Runtime rule during PX4 local-position resets:
+
+- Re-resolve the PX4 local origin in the bridge.
+- Keep publishing the OFFBOARD heartbeat.
+- Hold the last valid local NED setpoint until a fresh local origin is available.
+
+No other node may silently convert the same state again, publish PX4 setpoints in NED directly, or re-apply the same conversion downstream.
 
 ## Audit rules
 
