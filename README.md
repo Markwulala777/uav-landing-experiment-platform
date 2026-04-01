@@ -9,14 +9,20 @@ It does not vendor the full `PX4_Firmware` or `XTDrone` trees. Instead, it keeps
 - local experiment-specific overlay files for XTDrone in `overlays/XTDrone/`
 - helper scripts for bootstrap and runtime
 
-## Current upstream pins
+## Validated platform target
 
+- Ubuntu: `20.04`
+- Gazebo: `Gazebo Classic 11`
+- ROS 1 world layer: `Noetic`
+- ROS 2 research layer: `Foxy`
 - PX4 upstream: `https://github.com/PX4/PX4-Autopilot.git`
-- PX4 commit: `46a12a09bf11c8cbafc5ad905996645b4fe1a9df`
+- PX4 ref used by bootstrap: `v1.14.0`
 - XTDrone upstream: `https://gitee.com/robin_shaun/XTDrone.git`
 - XTDrone commit: `62339a816ef815113a0366a62e8aca4be3000f80`
-- Target ROS distro: `noetic`
-- Target Ubuntu version: `20.04`
+- World carrier: `VRX / ROS 1`
+- Research-control carrier: `ROS 2`
+
+The runtime PX4 worktree becomes `v1.14.0-dirty` after this repository's overlay files are applied. That is expected for this platform.
 
 ## Repository layout
 
@@ -55,20 +61,20 @@ uav-usv-experiment-platform/
 The script then:
 
 1. clones PX4 and XTDrone from their upstream repositories
-2. checks out the pinned commits
+2. checks out the pinned upstream refs
 3. syncs this repository's `catkin_ws_src/` into the runtime catkin workspace
 4. runs `scripts/apply_overlay.sh` to sync the experiment overlay files into PX4 and XTDrone
 5. installs the PX4 Python dependencies from `PX4_Firmware/Tools/setup/requirements.txt`
 6. builds PX4 SITL
 7. builds the ROS catkin workspace
 
-## Mixed ROS1/ROS2 migration path
+## Mixed ROS1/ROS2 architecture
 
-The repository now also carries the first mixed-architecture migration step discussed in the design documents:
+The repository carries the mixed-architecture split discussed in the design documents:
 
-- ROS 1 / Gazebo / VRX remain the environment carrier
+- ROS 1 Noetic / Gazebo Classic 11 / VRX remain the environment carrier
 - ROS 2 Foxy becomes the research-control layer
-- PX4 remains the flight-control carrier
+- PX4 v1.14.0 remains the flight-control carrier
 - `ros1_bridge` is built from source and used only for a reduced truth-level interface contract
 - `MicroXRCEAgent` remains the PX4 <-> ROS 2 transport entry point
 
@@ -98,7 +104,7 @@ It also skips `PX4_Firmware/Tools/update_px4_ros2_bridge.sh` by default, because
 
 ## Prerequisites on a fresh Ubuntu machine
 
-Install Ubuntu 20.04 with ROS Noetic first. This repository assumes you already have a working ROS Noetic environment, ideally `ros-noetic-desktop-full`.
+Install Ubuntu 20.04 with both ROS Noetic and ROS 2 Foxy first. This repository assumes you already have a working ROS 1 Noetic environment, ideally `ros-noetic-desktop-full`, and a working ROS 2 Foxy environment under `/opt/ros/foxy`.
 
 Then install the common build tools and runtime packages:
 
@@ -221,7 +227,7 @@ You can also override these environment variables when needed:
 - The mission controller is the XTDrone overlay script `control/usv_drone_mission.py`.
 - The default XTDrone upstream is a Gitee URL. If your target machine cannot access Gitee, override `XTDRONE_REPO_URL` when running `scripts/bootstrap.sh`.
 - The mixed bootstrap builds `ros1_bridge` from source inside the runtime, so it does not require the binary `ros-foxy-ros1-bridge` package to be installable on the host machine.
-- This repository is intended for `Ubuntu 20.04 + ROS Noetic`. It should not be treated as a drop-in deployment package for Ubuntu 22.04 or newer without adaptation.
+- This repository is intended for `Ubuntu 20.04 + Gazebo Classic 11 + ROS 1 Noetic + ROS 2 Foxy`, with the VRX main world on ROS 1 and the research layer on ROS 2. It should not be treated as a drop-in deployment package for Ubuntu 22.04 or newer without adaptation.
 
 ## Publishing this repository to GitHub
 
