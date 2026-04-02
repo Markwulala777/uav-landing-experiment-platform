@@ -50,6 +50,8 @@ uav-usv-experiment-platform/
 └── .gitignore
 ```
 
+See [CHANGELOG.md](CHANGELOG.md) for the repository-level change history.
+
 ## What gets deployed
 
 `scripts/bootstrap.sh` creates a runtime workspace outside this repository by default:
