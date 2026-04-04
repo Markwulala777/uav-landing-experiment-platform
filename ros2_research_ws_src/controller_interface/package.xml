@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>controller_interface</name>
+  <version>0.0.1</version>
+  <description>Reference selection, tracking-command generation, and PX4 offboard bridging.</description>
+
+  <maintainer email="jia@example.com">jia</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>px4_msgs</depend>
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>uav_usv_landing_msgs</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

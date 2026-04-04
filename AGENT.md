@@ -19,7 +19,7 @@ Before any non-trivial change, read these files in this order:
 2. `docs/MIXED_ROS1_ROS2_ARCHITECTURE.md`
 3. `docs/FRAME_CONVENTION.md`
 4. `docs/TIME_BASE.md`
-5. `docs/PHASE1_ACCEPTANCE.md`
+5. `docs/BASELINE_ACCEPTANCE.md`
 
 Use them as follows:
 
@@ -31,7 +31,7 @@ Use them as follows:
   Mandatory for any change involving setpoints, frames, relative state, PX4 offboard, or truth topics.
 - `docs/TIME_BASE.md`
   Mandatory for any change involving timestamps, logging, replay, metadata, or simulation time.
-- `docs/PHASE1_ACCEPTANCE.md`
+- `docs/BASELINE_ACCEPTANCE.md`
   Use as the acceptance contract for "is this change still correct?"
 
 # Platform Baseline
@@ -70,7 +70,7 @@ Preferred edit zones:
 Directory roles:
 
 - `ros2_research_ws_src/`
-  ROS 2 research layer source. Main packages include `deck_description`, `deck_interface`, `experiment_manager`, `frame_audit`, `joint_bringup`, `landing_guidance`, `metrics_evaluator`, `relative_estimation`, `safety_manager`, and `touchdown_manager`.
+  ROS 2 research layer source. Main packages include `uav_usv_landing_msgs`, `deck_interface`, `relative_estimation`, `mission_manager`, `landing_decision`, `landing_guidance`, `trajectory_planner`, `safety_manager`, `controller_interface`, `touchdown_manager`, `experiment_manager`, `metrics_evaluator`, and `joint_bringup`.
 - `catkin_ws_src/deck_interface_ros1`
   ROS 1 truth-export boundary. It consumes `/gazebo/model_states` and republishes a reduced, bridge-friendly truth contract.
 - `scripts/`
@@ -101,14 +101,16 @@ Unless the user explicitly asks for architecture changes, preserve all of the fo
 Frame and control boundary:
 
 - Gazebo truth and research-layer truth remain in `world` ENU.
-- `landing_guidance` publishes `/landing_guidance/setpoint/world` in `world` ENU only.
-- `landing_guidance/px4_offboard_bridge` is the only allowed conversion point from research-layer coordinates into PX4 control coordinates.
+- `relative_estimation` publishes `/relative_state/active` as the single public active-state input.
+- `landing_guidance` publishes `/guidance/reference` in `world` ENU semantics only.
+- `controller_interface` publishes `/controller/reference_active` as the single public active-reference input.
+- `controller_interface/px4_offboard_bridge` is the only allowed conversion point from research-layer coordinates into PX4 control coordinates.
 - The only allowed conversion chain is:
   - `world ENU -> local ENU -> local NED`
 - Do not add duplicate ENU-to-NED conversion in any upstream node.
 - Do not publish PX4 NED setpoints from any node other than `px4_offboard_bridge`.
 - `px4_offboard_bridge` resolves PX4 local origin using:
-  - `/deck_interface/truth/uav_pose`
+  - `/uav/state_truth`
   - `/fmu/out/vehicle_local_position`
 
 Time boundary:
@@ -127,9 +129,9 @@ Runtime boundary:
 
 Acceptance boundary:
 
-- `frame_audit` must pass within configured tolerances.
-- ROS 2 guidance must retain outer-loop control ownership.
-- Each run must still produce metadata and summary artifacts.
+- `metrics_evaluator/frame_audit` must pass within configured tolerances.
+- `controller_interface` must retain the only PX4/offboard output boundary.
+- Each run must still produce metadata, event-log, and summary artifacts.
 
 # Bootstrap and Bring-up
 
@@ -160,21 +162,22 @@ Script roles:
 - `run_ros1_bridge.sh`
   Starts `ros1_bridge` using `dynamic_bridge`.
 - `run_ros2_research.sh`
-  Launches `joint_bringup stage1_joint.launch.py`.
+  Launches `joint_bringup baseline_minimal.launch.py`.
 - `run_mission.sh`
   Legacy ROS 1 / XTDrone mission entrypoint. It is not the main mixed-stack research-layer entrypoint.
 
-Default ROS 2 Stage 1 nodes:
+Default ROS 2 baseline nodes:
 
 - `experiment_manager`
-- `deck_description`
 - `deck_interface`
 - `relative_estimation`
-- `safety_manager`
-- `touchdown_manager`
+- `mission_manager`
+- `landing_decision`
 - `landing_guidance`
-- `px4_offboard_bridge`
-- `frame_audit`
+- `trajectory_planner`
+- `safety_manager`
+- `controller_interface`
+- `touchdown_manager`
 - `metrics_evaluator`
 
 Common environment variables:
@@ -199,6 +202,7 @@ Expected run artifacts:
 
 - `run_metadata.json`
 - `scenario.yaml`
+- `events.jsonl`
 - `frame_audit_report.json`
 - `summary.json`
 - `summary.csv`
@@ -209,29 +213,30 @@ Expected output directory shape:
 
 High-value topics to inspect first:
 
-- `/landing_guidance/setpoint/world`
-- `/frame_audit/status/passed`
-- `/frame_audit/status/report`
-- `/experiment_manager/scenario_id`
-- `/experiment_manager/run_id`
-- `/experiment_manager/output_dir`
-- `/experiment_manager/event`
-- `/experiment_manager/seed`
+- `/relative_state/active`
+- `/mission/phase`
+- `/landing_window/status`
+- `/landing_decision/status`
+- `/controller/reference_active`
+- `/metrics/frame_audit/passed`
+- `/metrics/frame_audit/report`
+- `/experiment/run_status`
+- `/experiment/events`
 
 If the change touches PX4 offboard, frames, or relative state, also inspect:
 
-- `/deck_interface/truth/uav_pose`
+- `/uav/state_truth`
 - `/fmu/out/vehicle_local_position`
-- `/relative_estimation/truth/relative_pose`
-- `/relative_estimation/truth/relative_twist`
+- `/relative_state/truth`
+- `/controller/command`
 
 Recommended validation order:
 
 1. Confirm the relevant nodes are running.
 2. Confirm the expected topics exist and publish data.
 3. Confirm `use_sim_time` is still in effect where required.
-4. Confirm setpoints are still published in research-layer `world` ENU, not prematurely converted to NED upstream.
-5. Confirm `frame_audit` still passes and writes `frame_audit_report.json`.
+4. Confirm references are still published in research-layer `world` ENU, not prematurely converted to NED upstream.
+5. Confirm `metrics_evaluator/frame_audit` still passes and writes `frame_audit_report.json`.
 6. Confirm a full run still writes `summary.json` and `summary.csv`.
 
 Minimum validation by task type:
@@ -241,7 +246,7 @@ Minimum validation by task type:
 - Mixed-stack startup debugging
   Verify bootstrap artifacts exist, then bring up terminals in order and isolate the first broken stage.
 - PX4/offboard logic change
-  Always inspect `/landing_guidance/setpoint/world`, `/fmu/out/vehicle_local_position`, and `frame_audit_report.json`.
+  Always inspect `/guidance/reference`, `/controller/reference_active`, `/fmu/out/vehicle_local_position`, and `frame_audit_report.json`.
 
 # Change Policy
 
@@ -314,9 +319,9 @@ If full runtime validation is not feasible, at least do static consistency check
 5. Frame boundary violation
 
 - Symptoms
-  `frame_audit` fails, relative states disagree, or control data looks double-converted between ENU and NED
+  `metrics_evaluator/frame_audit` fails, relative states disagree, or control data looks double-converted between ENU and NED
 - Response
-  Check for any conversion outside `px4_offboard_bridge`, and confirm `landing_guidance` still publishes only `world` ENU setpoints
+  Check for any conversion outside `controller_interface/px4_offboard_bridge`, and confirm `landing_guidance` still publishes only `world` ENU references
 
 6. Sim-time boundary violation
 
@@ -328,9 +333,9 @@ If full runtime validation is not feasible, at least do static consistency check
 7. Output files missing
 
 - Symptoms
-  No `run_metadata.json`, `frame_audit_report.json`, `summary.json`, or `summary.csv`
+  No `run_metadata.json`, `events.jsonl`, `frame_audit_report.json`, `summary.json`, or `summary.csv`
 - Response
-  Check `/experiment_manager/output_dir`, then check whether the run reached touchdown or abort, then check output directory permissions and node logs
+  Check `/experiment/run_status`, then check whether the run reached touchdown or abort, then check output directory permissions and node logs
 
 # Working Norm for Future Codex Runs
 

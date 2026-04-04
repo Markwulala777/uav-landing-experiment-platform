@@ -1,0 +1,7 @@
+std_msgs/Header header
+uint8 phase
+geometry_msgs/Pose target_pose
+geometry_msgs/Vector3 target_velocity_envelope
+geometry_msgs/Pose corridor_reference
+float32 descent_rate
+string source

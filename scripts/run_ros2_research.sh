@@ -52,4 +52,4 @@ source_setup /opt/ros/foxy/setup.bash
 source_best_setup "$ROS2_PX4_WS/install"
 source_best_setup "$ROS2_RESEARCH_WS/install"
 
-exec ros2 launch joint_bringup stage1_joint.launch.py
+exec ros2 launch joint_bringup baseline_minimal.launch.py

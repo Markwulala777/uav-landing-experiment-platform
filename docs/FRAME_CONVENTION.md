@@ -1,6 +1,6 @@
 # Frame Convention
 
-This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-USV landing stack.
+This document freezes the current research-baseline frame convention for the mixed ROS1/ROS2 UAV-USV landing stack.
 
 ## Goals
 
@@ -29,7 +29,7 @@ This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-U
   - Used for flight-state interpretation and future estimator outputs.
 - `camera_*`
   - Onboard sensing frames attached to the UAV camera chain.
-  - Reserved for Phase 2 perception-only experiments.
+  - Reserved for future perception-only experiments.
 
 ## Truth publishing responsibilities
 
@@ -37,13 +37,13 @@ This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-U
   - Publishes deck truth, target truth, UAV truth, and truth relative states.
   - Source topics come from `/gazebo/model_states`.
 - ROS2 `deck_interface`
-  - Relays ROS1 bridge truth topics into the Phase 1 research namespace.
+  - Owns `/deck/*` public interfaces and transitional debug truth relays.
 - ROS2 `relative_estimation`
-  - Recomputes truth relative states independently for auditability.
+  - Recomputes truth relative states and exposes `/relative_state/active`.
 - ROS2 `landing_guidance`
-  - Publishes guidance setpoints in `world` ENU only.
-- ROS2 `landing_guidance.px4_offboard_bridge`
-  - Is the only node allowed to convert guidance setpoints into PX4 local NED.
+  - Publishes stage-wise geometric references in `world` ENU only.
+- ROS2 `controller_interface.px4_offboard_bridge`
+  - Is the only node allowed to convert research-layer commands into PX4 local NED.
 
 ## Relative-state convention
 
@@ -54,14 +54,14 @@ This document freezes the Phase 1 frame convention for the mixed ROS1/ROS2 UAV-U
 
 ## Frozen control-coordinate boundary
 
-The only allowed conversion point between research-layer coordinates and PX4 flight-control coordinates in Phase 1 is:
+The only allowed conversion point between research-layer coordinates and PX4 flight-control coordinates in the current baseline is:
 
-- ROS2 `landing_guidance.px4_offboard_bridge`
+- ROS2 `controller_interface.px4_offboard_bridge`
 
 Conversion rules:
 
 - First resolve the PX4 local origin in `world` ENU from:
-  - `/deck_interface/truth/uav_pose`
+  - `/uav/state_truth`
   - `/fmu/out/vehicle_local_position`
 - Then convert:
   - `world ENU -> local ENU`
@@ -83,10 +83,10 @@ No other node may silently convert the same state again, publish PX4 setpoints i
 
 ## Audit rules
 
-The Phase 1 `frame_audit` node checks:
+The `metrics_evaluator/frame_audit` helper checks:
 
 - Target offset consistency between `deck_frame` and `landing_target_frame`
 - Relative position consistency between world-frame truth and target-frame truth
 - Relative velocity consistency between world-frame truth and target-frame truth
 
-Phase 1 is not accepted unless the audit remains within the configured tolerances.
+The current baseline is not accepted unless the audit remains within the configured tolerances.

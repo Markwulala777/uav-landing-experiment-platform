@@ -97,15 +97,17 @@ See `docs/MIXED_ROS1_ROS2_ARCHITECTURE.md` for the new layer split and bring-up 
 
 ## Frozen coordinate and time convention
 
-Phase 1 freezes both coordinate ownership and simulation-time ownership so the research stack stays reproducible across ROS 1, ROS 2, Gazebo, and PX4.
+The current research baseline freezes both coordinate ownership and simulation-time ownership so the research stack stays reproducible across ROS 1, ROS 2, Gazebo, and PX4.
 
 Coordinate boundary:
 
 - Gazebo truth and research-layer truth stay in `world` ENU.
 - `deck_interface_ros1` extracts truth from `/gazebo/model_states` and publishes deck, landing-target, UAV, and relative states without converting them into PX4 coordinates.
-- `landing_guidance` publishes `/landing_guidance/setpoint/world` in `world` ENU only.
-- `landing_guidance/px4_offboard_bridge` is the only node allowed to touch PX4 control coordinates.
-- The bridge resolves the PX4 local origin in `world` ENU from `/deck_interface/truth/uav_pose` and `/fmu/out/vehicle_local_position`.
+- `relative_estimation` exposes `/relative_state/active` as the single public state input for downstream mission, decision, and control nodes.
+- `controller_interface` exposes `/controller/reference_active` as the single active control-reference input.
+- `landing_guidance` publishes `/guidance/reference` in `world` ENU semantics only.
+- `controller_interface/px4_offboard_bridge` is the only node allowed to touch PX4 control coordinates.
+- The bridge resolves the PX4 local origin in `world` ENU from `/uav/state_truth` and `/fmu/out/vehicle_local_position`.
 - The bridge then performs exactly one conversion chain: `world ENU -> local ENU -> local NED`.
 - No other node in this repository should publish PX4 setpoints in NED or re-apply ENU-to-NED conversion.
 
@@ -119,7 +121,7 @@ Time base boundary:
 
 - Gazebo is the simulation clock source for the ROS side of the platform.
 - The ROS 1 world launch enables `use_sim_time=true`, so ROS 1 nodes follow Gazebo `/clock`.
-- The ROS 2 Stage 1 launch also sets `use_sim_time=true`, so ROS 2 research nodes follow the same Gazebo `/clock`.
+- The default ROS 2 baseline launch also sets `use_sim_time=true`, so ROS 2 research nodes follow the same Gazebo `/clock`.
 - This means ROS 1 world nodes and ROS 2 research nodes share one simulation-time basis during runtime and replay.
 - PX4 does not directly subscribe to ROS `use_sim_time`; instead, PX4 stays aligned to the simulator through the SITL transport and PX4-side simulator timing.
 - MAVROS wall/system time synchronization is disabled in the PX4 world launch overlay so it does not fight Gazebo simulation time.
@@ -130,7 +132,33 @@ Operational consequences for time:
 - PX4 status should be treated as simulator-synchronized, but not as a ROS `/clock` consumer.
 - If Gazebo is paused, reset, or jumps in time, ROS nodes will reflect that jump because they are intentionally using simulation time.
 
-See `docs/FRAME_CONVENTION.md` for the detailed frame definitions and audit rules, and `docs/MIXED_ROS1_ROS2_ARCHITECTURE.md` for the layer boundaries.
+See `docs/FRAME_CONVENTION.md` for the detailed frame definitions and audit rules, `docs/TIME_BASE.md` for simulation-time rules, and `docs/BASELINE_ACCEPTANCE.md` for the baseline acceptance contract.
+
+## Current ROS 2 research-layer contract
+
+The current ROS 2 research source tree is organized around the mission loop under `ros2_research_ws_src/`:
+
+- `uav_usv_landing_msgs`
+- `deck_interface`
+- `relative_estimation`
+- `mission_manager`
+- `landing_decision`
+- `landing_guidance`
+- `trajectory_planner`
+- `safety_manager`
+- `controller_interface`
+- `touchdown_manager`
+- `experiment_manager`
+- `metrics_evaluator`
+- `joint_bringup`
+
+The main pipeline is:
+
+```text
+/deck/* + /uav/* -> /relative_state/active -> /mission/phase -> /landing_decision/status
+-> /guidance/reference or /planner/reference_trajectory -> /controller/reference_active
+-> /controller/command -> controller_interface/px4_offboard_bridge
+```
 
 For ROS 2 workspaces, prefer an ASCII-only path such as `~/uav-usv-experiment-platform-runtime` and avoid non-ASCII paths like `~/下载/...`, because `px4_msgs` interface generation was observed to fail under a non-ASCII workspace path on this machine.
 
@@ -267,5 +295,6 @@ You can also override these environment variables when needed:
 - The mission controller is the XTDrone overlay script `control/usv_drone_mission.py`.
 - The default XTDrone upstream is a Gitee URL. If your target machine cannot access Gitee, override `XTDRONE_REPO_URL` when running `scripts/bootstrap.sh`.
 - The mixed bootstrap builds `ros1_bridge` from source inside the runtime, so it does not require the binary `ros-foxy-ros1-bridge` package to be installable on the host machine.
-- The frozen coordinate rule for the mixed stack is: research nodes stay in `world` ENU, and only `landing_guidance/px4_offboard_bridge` converts setpoints into PX4 local NED.
+- The frozen coordinate rule for the mixed stack is: research nodes stay in `world` ENU, and only `controller_interface/px4_offboard_bridge` converts commands into PX4 local NED.
+- `scripts/run_ros2_research.sh` now launches `joint_bringup/baseline_minimal.launch.py` by default.
 - This repository is intended for `Ubuntu 20.04 + Gazebo Classic 11 + ROS 1 Noetic + ROS 2 Foxy`, with the VRX main world on ROS 1 and the research layer on ROS 2. It should not be treated as a drop-in deployment package for Ubuntu 22.04 or newer without adaptation.

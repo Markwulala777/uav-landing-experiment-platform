@@ -8,9 +8,19 @@ setup(
     packages=[],
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
-        ("share/" + package_name, ["package.xml"]),
+        ("share/" + package_name, ["package.xml", "README.md"]),
         ("share/" + package_name + "/config", ["config/calm_truth.yaml", "config/moderate_truth.yaml"]),
-        ("share/" + package_name + "/launch", ["launch/stage1_joint.launch.py"]),
+        (
+            "share/" + package_name + "/launch",
+            [
+                "launch/baseline_minimal.launch.py",
+                "launch/controller_integration.launch.py",
+                "launch/full_landing_mission.launch.py",
+                "launch/phase_b_minimal.launch.py",
+                "launch/planner_test.launch.py",
+                "launch/stage1_joint.launch.py",
+            ],
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

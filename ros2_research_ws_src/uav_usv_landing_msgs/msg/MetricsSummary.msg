@@ -1,0 +1,9 @@
+std_msgs/Header header
+bool mission_success
+string outcome_label
+float32 terminal_xy_error
+float32 terminal_z_error
+float32 touchdown_speed
+int32 go_around_count
+int32 safety_violation_count
+float32 window_utilization

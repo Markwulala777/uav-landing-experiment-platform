@@ -8,17 +8,18 @@ setup(
     packages=[package_name],
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
-        ("share/" + package_name, ["package.xml"]),
+        ("share/" + package_name, ["package.xml", "README.md"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="jia",
     maintainer_email="jia@example.com",
-    description="Phase 1 metrics evaluator.",
+    description="Read-only metrics and debug audit nodes for the research layer.",
     license="MIT",
     entry_points={
         "console_scripts": [
             "summary_writer = metrics_evaluator.summary_writer:main",
+            "frame_audit = metrics_evaluator.frame_audit_node:main",
         ],
     },
 )

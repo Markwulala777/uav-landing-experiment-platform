@@ -1,6 +1,6 @@
 # Mixed ROS1/ROS2 Architecture
 
-This repository now carries the first migration step toward the stricter research-platform architecture:
+This repository now carries the current research baseline for the stricter mixed ROS1/ROS2 research-platform architecture:
 
 - ROS 1 / catkin remains the environment carrier:
   - VRX Classic assets
@@ -8,8 +8,12 @@ This repository now carries the first migration step toward the stricter researc
   - WAM-V / maritime disturbance base
   - truth extraction from `/gazebo/model_states`
 - ROS 2 / colcon becomes the research layer:
+  - shared research-layer interface contracts
   - deck interface normalization
   - relative-state estimation
+  - mission-phase ownership
+  - landing-window and advisory logic
+  - trajectory/reference selection
   - safety monitoring
   - touchdown monitoring
   - landing-guidance logic
@@ -39,24 +43,27 @@ These topics are intentionally standard-message-only so they can cross `ros1_bri
 
 The ROS 2 research workspace is organized under `ros2_research_ws_src/` and currently starts the first research modules:
 
-- `deck_description`
+- `uav_usv_landing_msgs`
 - `deck_interface`
-- `experiment_manager`
-- `frame_audit`
 - `relative_estimation`
+- `mission_manager`
+- `landing_decision`
 - `landing_guidance`
+- `trajectory_planner`
 - `safety_manager`
+- `controller_interface`
 - `touchdown_manager`
+- `experiment_manager`
 - `metrics_evaluator`
 - `joint_bringup`
 
 ## Frozen coordinate ownership
 
-Phase 1 uses a strict frame boundary between the research layer and PX4:
+The current baseline uses a strict frame boundary between the research layer and PX4:
 
 - ROS 1 truth extraction stays in Gazebo `world` ENU.
 - ROS 2 research nodes consume truth and publish guidance in `world` ENU.
-- `landing_guidance/px4_offboard_bridge` is the only place where guidance crosses into PX4 local coordinates.
+- `controller_interface/px4_offboard_bridge` is the only place where research-layer commands cross into PX4 local coordinates.
 - The bridge performs one conversion chain only:
   - `world ENU -> local ENU -> local NED`
 - The bridge resolves the PX4 local origin from truth UAV pose plus PX4 local-position feedback.
@@ -64,11 +71,11 @@ Phase 1 uses a strict frame boundary between the research layer and PX4:
 
 This keeps the research-layer API independent of PX4 coordinate conventions and prevents duplicate ENU-to-NED conversions in upstream nodes.
 
-Phase 1 now includes:
+The current baseline now includes:
 
-- truth-level deck geometry publication
+- truth-level landing-zone publication inside `deck_interface`
 - ROS2-to-PX4 offboard bridge output
-- frame-audit reporting
+- frame-audit reporting via `metrics_evaluator`
 - per-run metadata generation
 - summary metric extraction
 
@@ -93,12 +100,14 @@ The major remaining gap before thesis-grade comparative studies is not package p
 5. Start ROS 2 research nodes:
    - `./scripts/run_ros2_research.sh`
 
-The default Stage 1 ROS 2 launch now:
+The default ROS 2 baseline launch now:
 
 - forces `use_sim_time=true`
 - loads a calm-truth scenario config by default
 - starts experiment metadata generation and summary logging
-- publishes world-frame landing setpoints and forwards them to PX4 offboard topics
+- publishes a single `/relative_state/active` input for the task layer
+- publishes a single `/controller/reference_active` input for the control layer
+- forwards controller commands to PX4 offboard topics through `controller_interface/px4_offboard_bridge`
 
 ## Machine-level gaps still expected
 

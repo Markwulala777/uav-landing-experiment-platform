@@ -6,13 +6,43 @@ experiment_manager:
   ros__parameters:
     scenario_id: calm_truth
     seed: 42
-    sea_state: calm
-    controller_variant: truth_guidance_px4
-    delay_profile: none
+    mode: baseline_minimal
+
+deck_interface:
+  ros__parameters:
+    deck_source: ros1_bridge_truth
+
+landing_zone_state:
+  ros__parameters:
+    deck_length: 2.0
+    deck_width: 1.2
+    zone_source: ros1_bridge_truth
+
+uav_truth_provider:
+  ros__parameters:
+    uav_source: ros1_bridge_truth
+
+relative_state_active_mux:
+  ros__parameters:
+    source_mode: truth
+
+mission_manager:
+  ros__parameters:
+    approach_xy_gate: 3.0
+    align_xy_gate: 1.5
+    synchronize_lateral_speed_gate: 0.8
+
+window_status:
+  ros__parameters:
+    window_xy_gate: 0.75
+    window_lateral_speed_gate: 0.8
+    window_vertical_speed_gate: 0.8
 
 landing_guidance:
   ros__parameters:
     approach_height: 5.0
+    align_height: 3.0
+    synchronize_height: 2.0
     terminal_height: 0.3
     descent_rate: 0.4
 
@@ -21,5 +51,17 @@ safety_manager:
     abort_xy_error: 4.0
     abort_abs_z: 8.0
     abort_lateral_speed: 3.0
-    descent_xy_gate: 0.75
-    descent_lateral_speed_gate: 0.8
+    safe_xy_gate: 0.75
+    safe_lateral_speed_gate: 0.8
+
+touchdown_manager:
+  ros__parameters:
+    contact_height_threshold: 0.15
+    stable_contact_duration: 0.5
+    success_xy_threshold: 0.5
+    success_vertical_speed: 0.8
+    success_lateral_speed: 0.8
+
+reference_mux:
+  ros__parameters:
+    source_mode: guidance

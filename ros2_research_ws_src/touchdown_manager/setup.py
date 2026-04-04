@@ -8,17 +8,18 @@ setup(
     packages=[package_name],
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
-        ("share/" + package_name, ["package.xml"]),
+        ("share/" + package_name, ["package.xml", "README.md"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="jia",
     maintainer_email="jia@example.com",
-    description="Touchdown event labeling.",
+    description="Touchdown state and event monitoring.",
     license="MIT",
     entry_points={
         "console_scripts": [
-            "truth_touchdown_monitor = touchdown_manager.truth_touchdown_monitor:main",
+            "contact_monitor = touchdown_manager.contact_monitor_node:main",
+            "truth_touchdown_monitor = touchdown_manager.contact_monitor_node:main",
         ],
     },
 )

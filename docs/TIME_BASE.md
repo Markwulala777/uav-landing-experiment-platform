@@ -1,12 +1,12 @@
 # Time Base
 
-This document freezes the Phase 1 time-base policy for the mixed ROS1/ROS2 UAV-USV landing stack.
+This document freezes the current research-baseline time-base policy for the mixed ROS1/ROS2 UAV-USV landing stack.
 
 ## Authoritative time source
 
 - Gazebo simulation time is the authoritative time base for shared-world experiments.
 
-## Phase 1 requirements
+## Baseline requirements
 
 - ROS1 truth extraction must timestamp messages using simulation-consistent time.
 - ROS2 research nodes must run with `use_sim_time=true`.
@@ -21,20 +21,23 @@ This document freezes the Phase 1 time-base policy for the mixed ROS1/ROS2 UAV-U
 ## What must be logged
 
 - Truth deck pose and twist timestamps
-- Truth relative pose and twist timestamps
-- Landing-guidance phase transitions
+- Relative-state timestamps on `/relative_state/active`
+- Mission-phase transitions on `/mission/phase`
+- Landing-window and decision-advisory event timestamps
 - Safety-manager state transitions
-- Touchdown event timestamps
+- Touchdown event timestamps on `/touchdown/event`
+- Experiment-manager event log timestamps on `/experiment/events`
+- Active control-reference timestamps on `/controller/reference_active`
 - PX4 offboard command publication timestamps
 
 ## Delay accounting
 
-Phase 1 uses truthful low-latency transport and does not yet inject configured delay.
+The current baseline uses truthful low-latency transport and does not yet inject configured delay.
 However, the platform must already expose enough timestamps to support later delay instrumentation.
 
 ## Acceptance intent
 
-Phase 1 is accepted only if:
+The current baseline is accepted only if:
 
 - ROS2 nodes use simulation time
 - run metadata is written per experiment

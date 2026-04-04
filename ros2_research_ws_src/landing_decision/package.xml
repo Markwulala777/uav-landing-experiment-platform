@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>landing_decision</name>
+  <version>0.0.1</version>
+  <description>Landing-window evaluation and decision advisories for the ROS 2 research layer.</description>
+
+  <maintainer email="jia@example.com">jia</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>uav_usv_landing_msgs</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

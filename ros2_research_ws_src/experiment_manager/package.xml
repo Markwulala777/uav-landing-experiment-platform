@@ -2,7 +2,7 @@
 <package format="3">
   <name>experiment_manager</name>
   <version>0.0.1</version>
-  <description>Scenario metadata and run-directory management for Phase 1 moving-deck landing experiments.</description>
+  <description>Scenario metadata and run-directory management for baseline moving-deck landing experiments.</description>
 
   <maintainer email="jia@example.com">jia</maintainer>
   <license>MIT</license>
@@ -10,7 +10,7 @@
   <buildtool_depend>ament_python</buildtool_depend>
 
   <depend>rclpy</depend>
-  <depend>std_msgs</depend>
+  <depend>uav_usv_landing_msgs</depend>
 
   <export>
     <build_type>ament_python</build_type>

@@ -13,22 +13,33 @@
 ### 新增
 
 - 新增 `AGENT.md`，为 Codex 等代码代理补充仓库级操作指南，覆盖优先阅读文档、默认改动区域、mixed-stack 启动顺序、frame/time 硬约束以及验证与排障入口。
+- 新增研究层统一接口包与 baseline 架构骨架：`uav_usv_landing_msgs`、`mission_manager`、`landing_decision`、`trajectory_planner`、`controller_interface`。
+- 新增 `baseline_minimal.launch.py`、`planner_test.launch.py`、`controller_integration.launch.py`、`full_landing_mission.launch.py` 四个 ROS 2 bring-up 入口，并保留 `phase_b_minimal.launch.py` 作为兼容别名。
+
+### 变更
+
+- 将研究层主链收敛为单一 active state 和 active reference：`/relative_state/active` 与 `/controller/reference_active`。
+- 将 PX4/NED 输出边界从 `landing_guidance/px4_offboard_bridge` 迁移并固定到 `controller_interface/px4_offboard_bridge`。
+- 将 `deck_description` 职责并入 `deck_interface`，并将旧 `frame_audit` 逻辑迁入 `metrics_evaluator` 内部 debug helper。
+- 更新 README、CHANGELOG、baseline 相关设计文档与包级 README，使当前实现与文档表述对齐。
+- 完成一次基于 `baseline_minimal` 的 Gazebo/PX4/`ros1_bridge`/ROS 2 research 全栈联调，确认主链能够产出 `run_metadata.json`、`events.jsonl`、`summary.json` 和 `frame_audit_report.json`。
 
 ### 修复
 
 - 修复在 `set -u` 严格 shell 环境下 source ROS Noetic setup 脚本时触发的 `ROS_DISTRO: unbound variable` 问题，统一为 `run_sim.sh`、`run_mission.sh` 和 `bootstrap.sh` 增加安全的 `source_setup()` 包装，避免运行与部署入口在新终端环境中启动失败。
+- 更新 `stop_platform.sh` 的目标进程匹配规则，使其与当前 baseline launch 名、控制接口包拆分以及新的 research-layer 可执行入口保持一致。
 
 ## [0.2.1] - 2026-04-01
 
 ### 新增
 
-- 补充 Phase 1 工件与验证支撑，包括 frame audit、experiment manager、deck description、时间基准说明和验收清单。
+- 补充 baseline 工件与验证支撑，包括 frame audit、experiment manager、deck description、时间基准说明和验收清单。
 - 新增 `stop_platform.sh`，用于本地运行时环境的一键停机，并将其纳入 bootstrap 安装出来的脚本集合。
 
 ### 变更
 
 - 将平台目标收敛到已验证的 mixed ROS1/ROS2 组合，明确 Ubuntu 20.04、Gazebo Classic 11、ROS Noetic、ROS 2 Foxy 和 PX4 v1.14.0 的协作基线。
-- 冻结 Phase 1 的坐标与时间约定，明确研究层保持 `world` ENU，`use_sim_time` 以 Gazebo 为准，并把 PX4 坐标转换边界限定在 `landing_guidance/px4_offboard_bridge`。
+- 冻结 baseline 坐标与时间约定，明确研究层保持 `world` ENU，`use_sim_time` 以 Gazebo 为准，并把 PX4 坐标转换边界限定在 `controller_interface/px4_offboard_bridge`。
 - 更新 mixed-stack bring-up、PX4 启动流程和仓库文档，使运行步骤、接口边界与验证口径保持一致。
 
 ### 修复

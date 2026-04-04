@@ -4,122 +4,163 @@ import math
 import os
 from time import monotonic
 
-from geometry_msgs.msg import PoseStamped, TwistStamped
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Bool, String
+from uav_usv_landing_msgs.msg import (
+    ExperimentRunStatus,
+    LandingDecisionStatus,
+    LandingWindowStatus,
+    MetricsSummary,
+    MissionStatus,
+    RelativeState,
+    SafetyStatus,
+    TouchdownState,
+)
 
 
 class SummaryWriter(Node):
     def __init__(self):
         super().__init__("metrics_evaluator")
-        self.relative_pose = None
-        self.relative_twist = None
-        self.phase = "initializing"
-        self.safety_reason = "unknown"
-        self.abort_requested = False
-        self.touchdown_detected = False
-        self.outcome_label = "pending"
+        self.relative_state = None
+        self.mission_status = None
+        self.safety_status = None
+        self.touchdown_state = None
+        self.run_status = None
+        self.last_decision_advisory = None
         self.max_xy_error = 0.0
-        self.run_id = "unassigned"
-        self.scenario_id = "unknown"
-        self.output_dir = None
         self.summary_written = False
         self.start_monotonic = monotonic()
         self.sample_count = 0
+        self.go_around_count = 0
+        self.safety_violation_count = 0
+        self.window_total_samples = 0
+        self.window_open_samples = 0
 
-        self.summary_ready_pub = self.create_publisher(Bool, "/metrics_evaluator/status/summary_ready", 10)
+        self.summary_pub = self.create_publisher(MetricsSummary, "/metrics/summary", 10)
 
-        self.create_subscription(PoseStamped, "/relative_estimation/truth/relative_pose", self.relative_pose_cb, 10)
-        self.create_subscription(TwistStamped, "/relative_estimation/truth/relative_twist", self.relative_twist_cb, 10)
-        self.create_subscription(String, "/landing_guidance/status/phase", self.phase_cb, 10)
-        self.create_subscription(String, "/safety_manager/status/reason", self.safety_reason_cb, 10)
-        self.create_subscription(Bool, "/safety_manager/status/abort_requested", self.abort_requested_cb, 10)
-        self.create_subscription(Bool, "/touchdown_manager/status/touchdown_detected", self.touchdown_detected_cb, 10)
-        self.create_subscription(String, "/touchdown_manager/status/outcome_label", self.outcome_label_cb, 10)
-        self.create_subscription(String, "/experiment_manager/run_id", self.run_id_cb, 10)
-        self.create_subscription(String, "/experiment_manager/scenario_id", self.scenario_id_cb, 10)
-        self.create_subscription(String, "/experiment_manager/output_dir", self.output_dir_cb, 10)
+        self.create_subscription(RelativeState, "/relative_state/active", self.relative_state_cb, 10)
+        self.create_subscription(MissionStatus, "/mission/phase", self.mission_status_cb, 10)
+        self.create_subscription(SafetyStatus, "/safety/status", self.safety_status_cb, 10)
+        self.create_subscription(TouchdownState, "/touchdown/state", self.touchdown_state_cb, 10)
+        self.create_subscription(ExperimentRunStatus, "/experiment/run_status", self.run_status_cb, 10)
+        self.create_subscription(LandingDecisionStatus, "/landing_decision/status", self.decision_status_cb, 10)
+        self.create_subscription(LandingWindowStatus, "/landing_window/status", self.window_status_cb, 10)
 
         self.timer = self.create_timer(1.0, self.maybe_write_summary)
         self.get_logger().info("metrics_evaluator summary writer is running.")
 
-    def relative_pose_cb(self, msg):
-        self.relative_pose = msg
-        xy_error = math.hypot(msg.pose.position.x, msg.pose.position.y)
+    def relative_state_cb(self, msg):
+        self.relative_state = msg
+        xy_error = math.hypot(msg.position.x, msg.position.y)
         self.max_xy_error = max(self.max_xy_error, xy_error)
         self.sample_count += 1
 
-    def relative_twist_cb(self, msg):
-        self.relative_twist = msg
+    def mission_status_cb(self, msg):
+        self.mission_status = msg
 
-    def phase_cb(self, msg):
-        self.phase = msg.data
+    def safety_status_cb(self, msg):
+        if self.safety_status is None or (
+            not self.safety_status.abort_requested and msg.abort_requested
+        ):
+            self.safety_violation_count += int(msg.abort_requested)
+        self.safety_status = msg
 
-    def safety_reason_cb(self, msg):
-        self.safety_reason = msg.data
+    def touchdown_state_cb(self, msg):
+        self.touchdown_state = msg
 
-    def abort_requested_cb(self, msg):
-        self.abort_requested = msg.data
+    def run_status_cb(self, msg):
+        self.run_status = msg
 
-    def touchdown_detected_cb(self, msg):
-        self.touchdown_detected = msg.data
+    def decision_status_cb(self, msg):
+        if (
+            msg.advisory == LandingDecisionStatus.GO_AROUND
+            and self.last_decision_advisory != LandingDecisionStatus.GO_AROUND
+        ):
+            self.go_around_count += 1
+        self.last_decision_advisory = msg.advisory
 
-    def outcome_label_cb(self, msg):
-        self.outcome_label = msg.data
-
-    def run_id_cb(self, msg):
-        self.run_id = msg.data
-
-    def scenario_id_cb(self, msg):
-        self.scenario_id = msg.data
-
-    def output_dir_cb(self, msg):
-        self.output_dir = msg.data
+    def window_status_cb(self, msg):
+        self.window_total_samples += 1
+        self.window_open_samples += int(msg.window_open)
 
     def maybe_write_summary(self):
-        if self.summary_written or not self.output_dir or self.relative_pose is None or self.relative_twist is None:
-            self.summary_ready_pub.publish(Bool(data=self.summary_written))
+        if self.summary_written or self.relative_state is None or self.run_status is None:
             return
 
-        should_write = self.touchdown_detected or self.abort_requested
+        mission_complete = (
+            self.touchdown_state is not None and self.touchdown_state.landing_completed
+        ) or (
+            self.mission_status is not None
+            and self.mission_status.phase in (MissionStatus.POST_LANDING, MissionStatus.ABORT_GO_AROUND)
+        ) or (
+            self.safety_status is not None and self.safety_status.abort_requested
+        )
+
+        should_write = mission_complete
         if not should_write:
-            self.summary_ready_pub.publish(Bool(data=False))
             return
 
-        os.makedirs(self.output_dir, exist_ok=True)
+        window_utilization = (
+            float(self.window_open_samples) / float(self.window_total_samples)
+            if self.window_total_samples
+            else 0.0
+        )
+        touchdown_speed = math.sqrt(
+            self.relative_state.linear_velocity.x ** 2
+            + self.relative_state.linear_velocity.y ** 2
+            + self.relative_state.linear_velocity.z ** 2
+        )
+        mission_success = bool(
+            self.touchdown_state is not None
+            and self.touchdown_state.landing_completed
+            and not self.touchdown_state.landing_failed
+        )
+        outcome_label = "success" if mission_success else "aborted_or_failed"
+
+        msg = MetricsSummary()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.mission_success = mission_success
+        msg.outcome_label = outcome_label
+        msg.terminal_xy_error = math.hypot(self.relative_state.position.x, self.relative_state.position.y)
+        msg.terminal_z_error = self.relative_state.position.z
+        msg.touchdown_speed = touchdown_speed
+        msg.go_around_count = self.go_around_count
+        msg.safety_violation_count = self.safety_violation_count
+        msg.window_utilization = window_utilization
+        self.summary_pub.publish(msg)
 
         summary = {
-            "scenario_id": self.scenario_id,
-            "run_id": self.run_id,
-            "phase": self.phase,
-            "safety_reason": self.safety_reason,
-            "abort_requested": self.abort_requested,
-            "touchdown_detected": self.touchdown_detected,
-            "outcome_label": self.outcome_label,
+            "scenario_id": self.run_status.scenario_id,
+            "run_id": self.run_status.run_id,
+            "phase": self.mission_status.phase if self.mission_status is not None else -1,
+            "safety_reason": self.safety_status.reason if self.safety_status is not None else "unknown",
+            "abort_requested": bool(self.safety_status.abort_requested) if self.safety_status else False,
+            "landing_completed": bool(self.touchdown_state.landing_completed) if self.touchdown_state else False,
+            "landing_failed": bool(self.touchdown_state.landing_failed) if self.touchdown_state else False,
+            "outcome_label": outcome_label,
             "max_xy_error_m": self.max_xy_error,
-            "final_xy_error_m": math.hypot(self.relative_pose.pose.position.x, self.relative_pose.pose.position.y),
-            "final_z_error_m": self.relative_pose.pose.position.z,
-            "final_lateral_speed_mps": math.hypot(
-                self.relative_twist.twist.linear.x,
-                self.relative_twist.twist.linear.y,
-            ),
-            "final_vertical_speed_mps": abs(self.relative_twist.twist.linear.z),
+            "final_xy_error_m": msg.terminal_xy_error,
+            "final_z_error_m": msg.terminal_z_error,
+            "touchdown_speed_mps": touchdown_speed,
+            "go_around_count": self.go_around_count,
+            "safety_violation_count": self.safety_violation_count,
+            "window_utilization": window_utilization,
             "samples": self.sample_count,
             "time_to_event_s": monotonic() - self.start_monotonic,
         }
 
-        with open(os.path.join(self.output_dir, "summary.json"), "w", encoding="utf-8") as handle:
-            json.dump(summary, handle, indent=2, sort_keys=True)
+        if self.run_status.output_dir:
+            os.makedirs(self.run_status.output_dir, exist_ok=True)
+            with open(os.path.join(self.run_status.output_dir, "summary.json"), "w", encoding="utf-8") as handle:
+                json.dump(summary, handle, indent=2, sort_keys=True)
 
-        csv_path = os.path.join(self.output_dir, "summary.csv")
-        with open(csv_path, "w", encoding="utf-8", newline="") as handle:
-            writer = csv.DictWriter(handle, fieldnames=list(summary.keys()))
-            writer.writeheader()
-            writer.writerow(summary)
+            csv_path = os.path.join(self.run_status.output_dir, "summary.csv")
+            with open(csv_path, "w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(summary.keys()))
+                writer.writeheader()
+                writer.writerow(summary)
 
         self.summary_written = True
-        self.summary_ready_pub.publish(Bool(data=True))
 
 
 def main():

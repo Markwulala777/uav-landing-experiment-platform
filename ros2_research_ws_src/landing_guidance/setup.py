@@ -8,18 +8,18 @@ setup(
     packages=[package_name],
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
-        ("share/" + package_name, ["package.xml"]),
+        ("share/" + package_name, ["package.xml", "README.md"]),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="jia",
     maintainer_email="jia@example.com",
-    description="Baseline truth-level landing guidance.",
+    description="Stage-wise geometric guidance references for the research layer.",
     license="MIT",
     entry_points={
         "console_scripts": [
-            "truth_guidance = landing_guidance.truth_guidance_node:main",
-            "px4_offboard_bridge = landing_guidance.px4_offboard_bridge:main",
+            "stage_reference = landing_guidance.stage_reference_node:main",
+            "truth_guidance = landing_guidance.stage_reference_node:main",
         ],
     },
 )
