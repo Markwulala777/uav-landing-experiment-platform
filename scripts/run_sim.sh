@@ -58,6 +58,13 @@ filter_colon_var() {
   export "$var_name"
 }
 
+launch_declares_arg() {
+  local launch_file="$1"
+  local arg_name="$2"
+
+  xmlstarlet sel -t -v "count(/launch/arg[@name='$arg_name'])" "$launch_file" 2>/dev/null | grep -qx '[1-9][0-9]*'
+}
+
 if [[ ! -f /opt/ros/noetic/setup.bash ]]; then
   echo "ROS Noetic was not found at /opt/ros/noetic/setup.bash" >&2
   exit 1
@@ -129,4 +136,12 @@ if ! rospack find mavros >/dev/null 2>&1; then
   exit 1
 fi
 
-exec roslaunch "$LAUNCH_FILE" "world:=$WORLD_FILE"
+ROSLAUNCH_ARGS=("world:=$WORLD_FILE")
+if launch_declares_arg "$LAUNCH_FILE" "gps_enabled"; then
+  ROSLAUNCH_ARGS+=("gps_enabled:=true")
+fi
+if launch_declares_arg "$LAUNCH_FILE" "imu_enabled"; then
+  ROSLAUNCH_ARGS+=("imu_enabled:=true")
+fi
+
+exec roslaunch "$LAUNCH_FILE" "${ROSLAUNCH_ARGS[@]}"

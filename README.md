@@ -333,6 +333,41 @@ Scenario notes:
   `platform_offset_xyz=[0.0, 0.0, 1.25]` and
   `landing_zone_offset_xyz=[0.5, 0.0, 1.25]`, so the expected landing-zone
   offset in the platform frame is `[0.5, 0.0, 0.0]`.
+  For this scenario, `scripts/run_sim.sh` detects that `sandisland.launch`
+  declares `gps_enabled` and `imu_enabled` and automatically starts the
+  existing WAM-V GPS/GNSS and IMU xacro plugins with
+  `gps_enabled:=true imu_enabled:=true`. Scenario 1/2 XTDrone launch files do
+  not receive these arguments.
+
+Scenario 3 WAM-V GPS/GNSS and IMU runtime checks:
+
+```bash
+~/uav-landing-experiment-platform-runtime/scripts/run_ros1_world.sh --scenario scenario_3_maritime_usv_qr
+rostopic list | grep -E '/wamv/sensors/(gps|imu)'
+rostopic echo -n 1 /wamv/sensors/gps/gps/fix
+rostopic echo -n 1 /wamv/sensors/gps/gps/fix_velocity
+rostopic echo -n 1 /wamv/sensors/imu/imu/data
+```
+
+Expected WAM-V sensor topics:
+
+- `/wamv/sensors/gps/gps/fix`
+- `/wamv/sensors/gps/gps/fix_velocity`
+- `/wamv/sensors/imu/imu/data`
+
+These topics use the existing VRX/WAM-V Hector Gazebo plugins:
+`libhector_gazebo_ros_gps.so` and `libhector_gazebo_ros_imu.so`. Fresh
+bootstrap runs install the declared `hector_gazebo_plugins` dependency through
+`rosdep`; older runtime trees may need the host package installed manually:
+
+```bash
+sudo apt-get install -y ros-noetic-hector-gazebo-plugins
+```
+
+Gazebo should contain `gps_wamv_link` and `imu_wamv_link` on the WAM-V model.
+Only these small WAM-V sensors are enabled for the QR maritime scenario; larger
+camera/lidar/VRX sensor mast options stay disabled so they do not obstruct the
+QR/AprilTag target board.
 
 Chain-validation artifacts:
 
@@ -404,6 +439,7 @@ You can also override these environment variables when needed:
 ## Notes for this experiment
 
 - `run_sim.sh` launches the PX4 `sandisland.launch` overlay and explicitly points it to the generated world file in `catkin_ws/build/vrx_gazebo/worlds/example_course.world`.
+- When `sandisland.launch` is selected, `run_sim.sh` also enables the existing WAM-V GPS/GNSS and IMU launch arguments. The source overlay for `single_vehicle_spawn_xtd.launch` starts PX4 from its SITL build directory so `etc/init.d-posix/rcS` resolves correctly and MAVROS receives the PX4 heartbeat.
 - `scripts/apply_overlay.sh` can be run by itself if you only want to refresh the PX4 and XTDrone overlay files without rebuilding everything.
 - This avoids depending on a pre-generated `example_course.world` file being present under the source package path.
 - The mission controller is the XTDrone overlay script `control/usv_drone_mission.py`.

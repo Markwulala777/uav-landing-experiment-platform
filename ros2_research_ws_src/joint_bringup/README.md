@@ -53,4 +53,9 @@ Scenario defaults frozen for chain validation:
   resolves to `sandisland.launch` with `example_course.world`, plus canonical
   platform `wamv` in `maritime_usv` mode,
   `platform_offset_xyz=[0.0, 0.0, 1.25]`, and
-  `landing_zone_offset_xyz=[0.5, 0.0, 1.25]`.
+  `landing_zone_offset_xyz=[0.5, 0.0, 1.25]`. The ROS 1 world launcher
+  automatically enables the existing WAM-V GPS/GNSS and IMU plugins for this
+  scenario when the target launch file declares `gps_enabled` and
+  `imu_enabled`. The expected WAM-V sensor topics are
+  `/wamv/sensors/gps/gps/fix`, `/wamv/sensors/gps/gps/fix_velocity`, and
+  `/wamv/sensors/imu/imu/data`.
